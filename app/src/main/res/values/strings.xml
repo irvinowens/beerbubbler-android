@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Beer Bubbler</string>
+    <string name="tab_text_1">Bubble Rate</string>
+    <string name="tab_text_2">Temperature</string>
+    <string name="tab_text_3">Humidity</string>
+    <string name="bubbler_description">Bubbler Description</string>
+</resources>
