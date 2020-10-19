@@ -9,7 +9,7 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.beerbubbler.R
+import us.sigsegv.beerbubbler.R
 
 /**
  * A placeholder fragment containing a simple view.

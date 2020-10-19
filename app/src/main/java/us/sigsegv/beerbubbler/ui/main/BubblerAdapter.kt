@@ -3,7 +3,7 @@ package us.sigsegv.beerbubbler.ui.main
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.example.beerbubbler.R
+import us.sigsegv.beerbubbler.R
 import us.sigsegv.beerbubbler.ui.main.le.BubbleEntry
 import java.text.FieldPosition
 import java.text.SimpleDateFormat
@@ -18,6 +18,7 @@ class BubblerAdapter(private val index: Int) : RecyclerView.Adapter<BubblerEntry
     }
 
     fun setBubbleEntries(list: List<BubbleEntry>) {
+        this.list.clear()
         this.list.addAll(list)
         notifyDataSetChanged()
     }
