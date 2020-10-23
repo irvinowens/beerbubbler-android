@@ -141,6 +141,9 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
                                                     database.bubbleDao().insertAll(newEntry);
                                                     Integer count = database.bubbleDao().getBubbleEntryCount();
                                                     Timber.v("Entry count: %d", count);
+                                                    if (count > 100000) {
+                                                        database.bubbleDao().delete(database.bubbleDao().getLastRecord().get(0));
+                                                    }
                                                     Timber.v(
                                                             "Logged off at %d, bubbles %d, temp %d celsius, humidity %d percent", new Date().getTime(), counts[0], counts[1], counts[2]);
                                                     Timber.v("Successfully recorded entry");
