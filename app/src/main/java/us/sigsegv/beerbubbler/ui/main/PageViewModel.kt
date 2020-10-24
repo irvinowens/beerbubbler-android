@@ -22,7 +22,7 @@ class PageViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getRecordsForGraph() : List<BubbleEntry> {
-        val invertedList : ArrayList<BubbleEntry> = ArrayList(200)
+        val invertedList : ArrayList<BubbleEntry> = ArrayList(10000)
         invertedList.addAll(bubbleDatabase.bubbleDao().getRecordsForGraph())
         invertedList.sortBy { it.time }
         return invertedList

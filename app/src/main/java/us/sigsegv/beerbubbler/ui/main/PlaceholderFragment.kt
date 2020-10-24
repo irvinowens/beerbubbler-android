@@ -14,12 +14,12 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.YAxis
-import com.github.mikephil.charting.data.BarData
-import com.github.mikephil.charting.data.BarDataSet
-import com.github.mikephil.charting.data.BarEntry
-import com.github.mikephil.charting.interfaces.datasets.IBarDataSet
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet
 import com.github.mikephil.charting.listener.ChartTouchListener
 import com.github.mikephil.charting.listener.OnChartGestureListener
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +36,7 @@ import us.sigsegv.beerbubbler.ui.main.le.BubbleEntry
  * A placeholder fragment containing a simple view.
  */
 class PlaceholderFragment : Fragment(), OnChartGestureListener {
-    private var chart : BarChart? = null
+    private var chart : LineChart? = null
     private lateinit var pageViewModel: PageViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,14 +52,13 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
     ): View? {
         val root = inflater.inflate(R.layout.fragment_main, container, false)
         val localActivity = activity
-        chart = BarChart(localActivity)
+        chart = LineChart(localActivity)
         val localChart = chart
         if (localChart != null && localActivity != null) {
             localChart.description.isEnabled = false
             localChart.onChartGestureListener = this
 
             localChart.setDrawGridBackground(false)
-            localChart.setDrawBarShadow(false)
 
             val tf = Typeface.createFromAsset(
                 localActivity.applicationContext.assets,
@@ -105,11 +104,11 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
         return root
     }
 
-    private suspend fun generateBarData(pageViewModel: PageViewModel, section: Int): BarData? = withContext(
+    private suspend fun generateBarData(pageViewModel: PageViewModel, section: Int): LineData? = withContext(
         IO
     ) {
-        val sets: ArrayList<IBarDataSet> = ArrayList()
-        val barEntries : ArrayList<BarEntry> = ArrayList(200)
+        val sets: ArrayList<ILineDataSet> = ArrayList()
+        val barEntries : ArrayList<Entry> = ArrayList(10000)
         val entries : List<BubbleEntry> = pageViewModel.getRecordsForGraph()
         var previousValue = 0.0f
         var count = 0
@@ -120,7 +119,7 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
                     previousValue = bubble.bubbleCount?.toFloat() ?: 0.0f
                 } else {
                     barEntries.add(
-                        BarEntry(
+                        Entry(
                             count.toFloat(),
                             (bubble.bubbleCount?.toFloat() ?: 0.0f) - previousValue
                         )
@@ -129,14 +128,14 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
                 }
             } else if (section == 2) {
                 barEntries.add(
-                    BarEntry(
+                    Entry(
                         count.toFloat(),
                         bubble.temperature?.toFloat() ?: 0.0f
                     )
                 )
             } else if (section == 3) {
                 barEntries.add(
-                    BarEntry(
+                    Entry(
                         count.toFloat(),
                         bubble.humidity?.toFloat() ?: 0.0f
                     )
@@ -156,7 +155,7 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
             }
         }
         Timber.d("Number of bar entries: %d", barEntries.size)
-        val ds = BarDataSet(barEntries, label)
+        val ds = LineDataSet(barEntries, label)
         val typedValue = TypedValue()
         val theme: Resources.Theme = context!!.theme
         theme.resolveAttribute(R.attr.colorSecondary, typedValue, true)
@@ -164,7 +163,7 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
         ds.valueTextSize = 8f
         ds.axisDependency = YAxis.AxisDependency.LEFT
         sets.add(ds)
-        val barData = BarData(sets)
+        val barData = LineData(sets)
         val tf = Typeface.createFromAsset(activity?.assets, "OpenSans-Light.ttf")
         barData.setValueTypeface(tf)
         barData
