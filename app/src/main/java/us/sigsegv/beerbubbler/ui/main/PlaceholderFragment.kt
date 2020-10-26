@@ -81,13 +81,12 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
             val leftAxis = localChart.axisLeft
             leftAxis.typeface = tf
             leftAxis.axisMinimum = 0f // this replaces setStartAtZero(true)
-
+            leftAxis.textColor = typedValue.data
 
             localChart.axisRight.isEnabled = false
 
             val xAxis = localChart.xAxis
             xAxis.isEnabled = false
-
             // programmatically add the chart
             val parent: FrameLayout = root.findViewById(R.id.graph)
             parent.addView(chart)
@@ -185,6 +184,20 @@ class PlaceholderFragment : Fragment(), OnChartGestureListener {
             return PlaceholderFragment().apply {
                 arguments = Bundle().apply {
                     putInt(ARG_SECTION_NUMBER, sectionNumber)
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val lineChart = chart
+        if (lineChart != null) {
+            CoroutineScope(IO).launch {
+                val result = generateBarData(pageViewModel, pageViewModel.index())
+                CoroutineScope(Main).launch {
+                    lineChart.data = result
+                    lineChart.invalidate()
                 }
             }
         }

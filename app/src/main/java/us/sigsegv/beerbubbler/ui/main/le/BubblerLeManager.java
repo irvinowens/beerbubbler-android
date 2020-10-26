@@ -37,9 +37,11 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
     BubbleDatabase database;
 
     public static BubblerLeManager getInstance(Context context) {
-        if (instance == null) {
-            synchronized (TAG) {
-                instance = new BubblerLeManager(context);
+        synchronized (TAG) {
+            if (instance == null) {
+                synchronized (TAG) {
+                    instance = new BubblerLeManager(context);
+                }
             }
         }
         return instance;
@@ -76,6 +78,10 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
     }
 
     private void processConnection(GattConnection conn) {
+        if (conn.getGattState().equals(GattState.CONNECTING)) {
+            Timber.tag(TAG).w("Already connecting");
+            return;
+        }
         if (!conn.isConnected()) {
             GattConnectTransaction connectTransaction = new GattConnectTransaction(conn, GattState.CONNECTED);
             conn.runTx(connectTransaction, result -> {
@@ -139,7 +145,7 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
                                                     BubbleEntry newEntry = new BubbleEntry(0,
                                                             new Date().getTime(), counts[0], counts[1], counts[2]);
                                                     database.bubbleDao().insertAll(newEntry);
-                                                    Integer count = database.bubbleDao().getBubbleEntryCount();
+                                                    int count = database.bubbleDao().getBubbleEntryCount();
                                                     Timber.v("Entry count: %d", count);
                                                     if (count > 100000) {
                                                         database.bubbleDao().delete(database.bubbleDao().getLastRecord().get(0));

@@ -22,11 +22,14 @@ import java.util.concurrent.TimeUnit
 class MainActivity : AppCompatActivity() {
     private lateinit var leBubbler : BubblerLeManager
     private val permissionRequestCode = 17652
+    private val workerTag = "us.sigsegv.beerbubber.worker.BeerWorker"
+    private lateinit var workManager : WorkManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         Timber.d("onCreate")
+        workManager = WorkManager.getInstance(applicationContext)
         leBubbler = BubblerLeManager.getInstance(this)
         val sectionsPagerAdapter = SectionsPagerAdapter(this, supportFragmentManager)
         val viewPager: ViewPager = findViewById(R.id.view_pager)
@@ -106,21 +109,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startWorkManager() {
-        WorkManager.getInstance(applicationContext).cancelAllWork()
+        Timber.i("Restarting Beer Bubbler Job")
+        workManager.cancelAllWorkByTag(workerTag)
         val constraints = Constraints.Builder()
             .setRequiresBatteryNotLow(true)
-            .setRequiresDeviceIdle(true)
             .setRequiresStorageNotLow(true)
             .build()
         val saveRequest =
             androidx.work.PeriodicWorkRequestBuilder<BubblerWorker>(
-                1, TimeUnit.HOURS
+                6, TimeUnit.HOURS,
+                    3, TimeUnit.HOURS
             )
                 .setConstraints(constraints)
-                .addTag("Bubbler Worker")
+                .addTag(workerTag)
                 .build()
 
-        WorkManager.getInstance(applicationContext)
-            .enqueue(saveRequest)
+        workManager.enqueue(saveRequest)
+        workManager.getWorkInfosByTag(workerTag).get().forEach {
+            Timber.i("Job status: %s", it.state)
+        }
     }
 }
