@@ -5,6 +5,8 @@ import androidx.room.*
 
 @Dao
 interface BubbleDao {
+    @Query("SELECT * FROM bubbleentry WHERE time > :start AND time < :end ORDER BY time DESC ")
+    fun getRecordsBetweenTime(start: Long, end: Long) : List<BubbleEntry>
     @Query("SELECT * FROM bubbleentry ORDER BY uid DESC LIMIT 1")
     fun getLastRecord() : List<BubbleEntry>
     @Query("SELECT * FROM bubbleentry ORDER BY time DESC LIMIT 10000")

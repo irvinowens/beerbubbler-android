@@ -10,6 +10,7 @@ import us.sigsegv.beerbubbler.ui.main.le.BubblerLeManager
 import java.util.*
 
 class PageViewModel(application: Application) : AndroidViewModel(application) {
+    private val twentyFourHoursInMs : Long = 86400000
     private val _index = MutableLiveData<Int>(0)
     private var entries : LiveData<List<BubbleEntry>>
     private val bubbleDatabase : BubbleDatabase = BubblerLeManager.BubbleDatabaseHolder.getInstance(application).database
@@ -22,8 +23,9 @@ class PageViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getRecordsForGraph() : List<BubbleEntry> {
+        val time = Date().time
         val invertedList : ArrayList<BubbleEntry> = ArrayList(10000)
-        invertedList.addAll(bubbleDatabase.bubbleDao().getRecordsForGraph())
+        invertedList.addAll(bubbleDatabase.bubbleDao().getRecordsBetweenTime((time - twentyFourHoursInMs), time))
         invertedList.sortBy { it.time }
         return invertedList
     }

@@ -275,7 +275,7 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
             this.database = Room.databaseBuilder(
                     context.getApplicationContext(),
                     BubbleDatabase.class, "beerbubbler-database"
-                ).build();
+                ).addMigrations(BubbleEntryKt.getMIGRATION_1_2()).build();
         }
 
         public BubbleDatabase getDatabase(){
