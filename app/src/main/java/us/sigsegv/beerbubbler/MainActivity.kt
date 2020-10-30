@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        Timber.i("onResume")
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             leBubbler.startActiveInteraction()
             startWorkManager()
@@ -117,8 +118,8 @@ class MainActivity : AppCompatActivity() {
             .build()
         val saveRequest =
             androidx.work.PeriodicWorkRequestBuilder<BubblerWorker>(
-                6, TimeUnit.HOURS,
-                    3, TimeUnit.HOURS
+                1, TimeUnit.HOURS,
+                    20, TimeUnit.MINUTES
             )
                 .setConstraints(constraints)
                 .addTag(workerTag)

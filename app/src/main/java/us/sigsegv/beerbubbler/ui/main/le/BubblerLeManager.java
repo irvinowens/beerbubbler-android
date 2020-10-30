@@ -1,22 +1,31 @@
 package us.sigsegv.beerbubbler.ui.main.le;
 
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.ScanFilter;
 import android.content.Context;
+import android.hardware.display.DisplayManager;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.view.Display;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.Room;
 
 import com.fitbit.bluetooth.fbgatt.FitbitGatt;
 import com.fitbit.bluetooth.fbgatt.GattConnection;
 import com.fitbit.bluetooth.fbgatt.GattServerConnection;
 import com.fitbit.bluetooth.fbgatt.GattState;
+import com.fitbit.bluetooth.fbgatt.GattTransactionCallback;
 import com.fitbit.bluetooth.fbgatt.TransactionResult;
 import com.fitbit.bluetooth.fbgatt.exception.BitGattStartException;
 import com.fitbit.bluetooth.fbgatt.tx.GattClientDiscoverServicesTransaction;
 import com.fitbit.bluetooth.fbgatt.tx.GattConnectTransaction;
+import com.fitbit.bluetooth.fbgatt.tx.GattDisconnectTransaction;
 import com.fitbit.bluetooth.fbgatt.tx.ReadGattCharacteristicTransaction;
 
 import java.nio.ByteBuffer;
@@ -54,16 +63,33 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
         gatt.initializeScanner(context);
         gatt.addDeviceNameScanFilter(DEVICE_NAME);
         gatt.getAlwaysConnectedScanner().addScanFilter(context, filter);
+        gatt.getAlwaysConnectedScanner().setNumberOfExpectedDevices(1);
+        gatt.getAlwaysConnectedScanner().setShouldKeepLooking(true);
         Timber.tag(TAG).v("Initialized bubbler");
         HandlerThread databaseThread = new HandlerThread("Database Thread");
         databaseThread.start();
         databaseHandler = new Handler(databaseThread.getLooper());
     }
 
+    private boolean isDisplayOn(@Nullable Context context){
+        if (context == null) {
+            return false;
+        }
+        DisplayManager dm = (DisplayManager) context.getSystemService(Context.DISPLAY_SERVICE);
+        for (Display display : dm.getDisplays()) {
+            if (display.getState() != Display.STATE_OFF) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void startActiveInteraction() {
+        Timber.tag(TAG).d("Starting active search");
         // check for connections
         List<GattConnection> connections = gatt.getMatchingConnectionsForDeviceNames(Collections.singletonList(DEVICE_NAME));
         if (connections.isEmpty()) {
+            Timber.tag(TAG).d("Starting high priority scan");
             gatt.startHighPriorityScan(gatt.getAppContext());
             Timber.tag(TAG).v("No connections, will wait for one");
         } else {
@@ -116,6 +142,13 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
             BluetoothGattService service = conn.getGatt().getService(UUID.fromString("621d4d94-0d1d-11eb-b2d5-f367b4cbee46"));
             if (service == null) {
                 Timber.tag(TAG).w("Service was null");
+                GattDisconnectTransaction gattDisconnectTransaction = new GattDisconnectTransaction(conn, GattState.DISCONNECTED);
+                conn.runTx(gattDisconnectTransaction, new GattTransactionCallback() {
+                    @Override
+                    public void onTransactionComplete(@NonNull TransactionResult result) {
+                        Timber.tag(TAG).d("Disconnected from non beer bubbler: %s", result);
+                    }
+                });
                 return;
             }
             BluetoothGattCharacteristic bubbleCharacteristic = service.getCharacteristic(UUID.fromString("621d4d00-0d1d-11eb-b2d5-f367b4cbee46"));
@@ -145,14 +178,30 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
                                                     BubbleEntry newEntry = new BubbleEntry(0,
                                                             new Date().getTime(), counts[0], counts[1], counts[2]);
                                                     database.bubbleDao().insertAll(newEntry);
-                                                    int count = database.bubbleDao().getBubbleEntryCount();
-                                                    Timber.v("Entry count: %d", count);
-                                                    if (count > 100000) {
-                                                        database.bubbleDao().delete(database.bubbleDao().getLastRecord().get(0));
-                                                    }
+                                                    int records = database.bubbleDao().getBubbleEntryCount();
+                                                    Timber.v("Entry count: %d", records);
+                                                    databaseHandler.post(() -> {
+                                                        int count = database.bubbleDao().getBubbleEntryCount();
+                                                        if (count > 20000) {
+                                                            while (count > 20000) {
+                                                                BubbleEntry oldestEntry = database.bubbleDao().getLastRecord().get(0);
+                                                                if (oldestEntry != null) {
+                                                                    Timber.v("Deleted entry with uid %d", oldestEntry.getUid());
+                                                                    database.bubbleDao().delete(oldestEntry);
+                                                                    count = database.bubbleDao().getBubbleEntryCount();
+                                                                }
+                                                            }
+                                                        }
+                                                    });
                                                     Timber.v(
                                                             "Logged off at %d, bubbles %d, temp %d celsius, humidity %d percent", new Date().getTime(), counts[0], counts[1], counts[2]);
                                                     Timber.v("Successfully recorded entry");
+                                                    if (!gatt.isScanning()) {
+                                                        Timber.tag(TAG).d("Not already scanning, so we need to read again");
+                                                        databaseHandler.postDelayed(() -> {
+                                                            processConnection(conn);
+                                                        }, 1000);
+                                                    }
                                                 });
                                             } else {
                                                 Timber.w("Humidity characteristic reported null");
@@ -183,7 +232,9 @@ public class BubblerLeManager implements FitbitGatt.FitbitGattCallback {
     @Override
     public void onBluetoothPeripheralDiscovered(GattConnection connection) {
         Timber.v("Peripheral %s discovered", connection.getDevice().getName());
-        processConnection(connection);
+        if (DEVICE_NAME.equals(connection.getDevice().getName()) || "Unknown Name".equals(connection.getDevice().getName())) {
+            processConnection(connection);
+        }
     }
 
     @Override
